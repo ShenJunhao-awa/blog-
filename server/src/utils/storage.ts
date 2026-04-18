@@ -2,7 +2,6 @@ import { path_join } from "./path";
 import { buildS3ObjectUrl, createS3Client, putObject as putS3Object } from "./s3";
 import { files } from "../db/schema";
 import { eq } from "drizzle-orm";
-import { getDbClient } from "./db-config";
 
 type StorageTarget =
   | {
@@ -310,9 +309,14 @@ export async function putStorageObjectAtKeyWithContext(
     } else if (body instanceof ArrayBuffer) {
       contentBuffer = body;
     } else if (body instanceof Uint8Array) {
-      contentBuffer = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
+      const copy = new Uint8Array(body.byteLength);
+      copy.set(body);
+      contentBuffer = copy.buffer;
     } else if (typeof body === 'string') {
-      contentBuffer = new TextEncoder().encode(body).buffer;
+      const encoded = new TextEncoder().encode(body);
+      const copy = new Uint8Array(encoded.byteLength);
+      copy.set(encoded);
+      contentBuffer = copy.buffer;
     } else {
       throw new Error('Unsupported body type for database storage');
     }
