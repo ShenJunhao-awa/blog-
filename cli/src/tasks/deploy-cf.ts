@@ -266,14 +266,14 @@ export async function runCloudflareDeploy(target: "all" | "server" | "client" = 
 
   const migrationVersion = await getMigrationVersion("remote", dbName);
   const infoExists = await isInfoExist("remote", dbName);
-  const files = await readdir("./server/sql", { recursive: false });
+  const files = await readdir("./server/sql", { recursive: false }) as string[];
   const sqlFiles = files
-    .filter((name) => name.endsWith(".sql"))
-    .filter((name) => {
+    .filter((name: string) => name.endsWith(".sql"))
+    .filter((name: string) => {
       const version = getMigrationFileVersion(name);
       return version !== null && version > migrationVersion;
     })
-    .sort((left, right) => {
+    .sort((left: string, right: string) => {
       return (getMigrationFileVersion(left) || 0) - (getMigrationFileVersion(right) || 0);
     });
 

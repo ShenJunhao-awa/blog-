@@ -10,7 +10,7 @@
     "rootDir": ".",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["bun"]
+    "noEmit": true
   },
   "include": ["bin/**/*", "src/**/*"],
   "exclude": ["node_modules", "dist"]
