@@ -83,12 +83,12 @@ jobs:
           retention-days: 1
 
       - name: Deploy to Cloudflare
-        if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          WORKER_NAME: ${{ vars.WORKER_NAME || 'rin-server' }}
-          DB_NAME: ${{ vars.DB_NAME || 'rin' }}
+          DEFAULT_WORKER_NAME: ${{ vars.WORKER_NAME || 'rin-server' }}
+          DEFAULT_DB_NAME: ${{ vars.DB_NAME || 'rin' }}
           NAME: ${{ vars.NAME || 'Rin' }}
           DESCRIPTION: ${{ vars.DESCRIPTION || 'A lightweight personal blogging system' }}
           AVATAR: ${{ vars.AVATAR || '' }}
@@ -114,8 +114,28 @@ jobs:
           RSS_DESCRIPTION: ${{ vars.RSS_DESCRIPTION || '' }}
           CACHE_STORAGE_MODE: ${{ vars.CACHE_STORAGE_MODE || 's3' }}
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-            bun run deploy --preview
-          else
-            bun run deploy
+          set -euo pipefail
+
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "Missing required Cloudflare secrets: CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID"
+            exit 1
           fi
+
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            export WORKER_NAME="${DEFAULT_WORKER_NAME}-pr-${GITHUB_HEAD_REF:-${GITHUB_REF##*/}}"
+            export DB_NAME="${DEFAULT_DB_NAME}-preview"
+            bun run deploy --preview | tee deploy_output.log
+          elif [ "${GITHUB_REF}" = "refs/heads/main" ] || [ "${GITHUB_REF}" = "refs/heads/master" ] || [ "${GITHUB_REF}" = "refs/heads/trunk" ]; then
+            export WORKER_NAME="${DEFAULT_WORKER_NAME}"
+            export DB_NAME="${DEFAULT_DB_NAME}"
+            bun run deploy | tee deploy_output.log
+          else
+            BRANCH_NAME="${GITHUB_REF##*/}"
+            SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/-\{2,\}/-/g' | sed 's/^-\|-$//g')
+            export WORKER_NAME="${DEFAULT_WORKER_NAME}-preview-${SAFE_BRANCH}"
+            export DB_NAME="${DEFAULT_DB_NAME}-preview"
+            bun run deploy --preview | tee deploy_output.log
+          fi
+
+          echo "---- Deployment summary ----"
+          grep -oE 'https://[^ ]+' deploy_output.log | head -n 5 || true
