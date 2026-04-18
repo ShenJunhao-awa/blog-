@@ -4,6 +4,13 @@ import { path_join } from "./path";
 export function createS3Client(env: Env): AwsClient {
     const accessKeyId = env.S3_ACCESS_KEY_ID;
     const secretAccessKey = env.S3_SECRET_ACCESS_KEY;
+
+    if (!accessKeyId) {
+        throw new Error("S3_ACCESS_KEY_ID is not defined");
+    }
+    if (!secretAccessKey) {
+        throw new Error("S3_SECRET_ACCESS_KEY is not defined");
+    }
     
     return new AwsClient({
         accessKeyId,
@@ -22,6 +29,13 @@ export async function putObject(
     const endpoint = env.S3_ENDPOINT;
     const bucket = env.S3_BUCKET;
     const forcePathStyle = env.S3_FORCE_PATH_STYLE === 'true';
+
+    if (!endpoint) {
+        throw new Error("S3_ENDPOINT is not defined");
+    }
+    if (!bucket) {
+        throw new Error("S3_BUCKET is not defined");
+    }
 
     // Construct URL based on path-style or virtual-hosted style
     let url: string;
@@ -55,6 +69,13 @@ export function buildS3ObjectUrl(env: Env, key: string): string {
     const endpoint = env.S3_ENDPOINT;
     const bucket = env.S3_BUCKET;
     const forcePathStyle = env.S3_FORCE_PATH_STYLE === 'true';
+
+    if (!endpoint) {
+        throw new Error("S3_ENDPOINT is not defined");
+    }
+    if (!bucket) {
+        throw new Error("S3_BUCKET is not defined");
+    }
 
     if (forcePathStyle) {
         return path_join(endpoint, bucket, key);
